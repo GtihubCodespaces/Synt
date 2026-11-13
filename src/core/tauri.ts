@@ -42,6 +42,39 @@ export async function stageScreenshots(paths: string[]): Promise<string | null> 
   return invoke<string>("stage_screenshots", { paths });
 }
 
+export interface OverlayState {
+  supported: boolean;
+  granted: boolean;
+  running: boolean;
+}
+
+const NO_OVERLAY: OverlayState = { supported: false, granted: false, running: false };
+
+/** The floating island only exists on Android; desktop answers "unsupported". */
+export function isAndroid(): boolean {
+  return isTauri() && /Android/i.test(navigator.userAgent);
+}
+
+export async function overlayState(): Promise<OverlayState> {
+  return (await invoke<OverlayState>("overlay_state")) ?? NO_OVERLAY;
+}
+
+export async function enableOverlay(): Promise<OverlayState> {
+  return (await invoke<OverlayState>("overlay_enable")) ?? NO_OVERLAY;
+}
+
+export async function disableOverlay(): Promise<OverlayState> {
+  return (await invoke<OverlayState>("overlay_disable")) ?? NO_OVERLAY;
+}
+
+export async function openOverlayPermission(): Promise<void> {
+  await invoke("overlay_permission");
+}
+
+export async function setOverlayMood(mood: string, label: string): Promise<void> {
+  await invoke("overlay_mood", { mood, label });
+}
+
 export async function openExternal(target: string): Promise<void> {
   if (isTauri()) {
     await invoke("open_external", { target });

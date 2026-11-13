@@ -9,7 +9,20 @@ import { AiError, streamReply, testKey, type Turn } from "./core/ai";
 import { Ears } from "./core/asr";
 import { getBcp47, setLang, t } from "./core/i18n";
 import { clearKey, loadKey, loadSettings, saveKey, saveSettings, type Settings } from "./core/store";
-import { isTauri, onTauriFileDrop, openExternal, readImageAsDataUrl, stageScreenshots } from "./core/tauri";
+import {
+  disableOverlay,
+  enableOverlay,
+  isAndroid,
+  isTauri,
+  onTauriFileDrop,
+  openExternal,
+  openOverlayPermission,
+  overlayState,
+  readImageAsDataUrl,
+  setOverlayMood,
+  stageScreenshots,
+  type OverlayState,
+} from "./core/tauri";
 import { Voice } from "./core/tts";
 import { buildBrief, copyText, openSyntaxUI, type Shot } from "./core/syntaxui";
 import { ChatView, type Bubble } from "./ui/chat";
@@ -58,6 +71,7 @@ let settings: Settings;
 let apiKey = "";
 let busy = false;
 let lastSpoken = "";
+let overlay: OverlayState = { supported: false, granted: false, running: false };
 
 const bubbles: Bubble[] = [];
 const context: Turn[] = [];
@@ -66,7 +80,8 @@ let counter = 0;
 const newId = (): string => `m${(counter += 1)}`;
 
 const cube = new SyntCube(cubeCanvas);
-const heroCube = new SyntCube($<HTMLCanvasElement>("#cube-hero"));
+const heroCubeCanvas = $<HTMLCanvasElement>("#cube-hero");
+const heroCube = new SyntCube(heroCubeCanvas);
 cube.link(heroCube);
 const island = new Island(islandEl);
 const chat = new ChatView(messagesEl, $("#chat-hero"));
@@ -78,6 +93,8 @@ function setMood(mood: Mood): void {
   island.setMood(mood);
   const label = mood === "listening" ? t("listening") : mood === "thinking" ? t("thinking") : mood === "speaking" ? t("speaking") : t("wake");
   island.setSubtitle(label);
+  // The floating copy shows the same face and the same word.
+  if (overlay.supported) void setOverlayMood(mood, label);
 }
 
 const ears = new Ears({
@@ -272,7 +289,8 @@ async function listenForQuestion(): Promise<void> {
 
 /* ── Settings ────────────────────────────────────────────────────────────── */
 
-function openSettings(): void {
+async function openSettings(): Promise<void> {
+  if (isAndroid()) overlay = await overlayState();
   island.open("settings");
   renderSettingsView();
 }
@@ -314,8 +332,34 @@ function renderSettingsView(): void {
     },
     onSyntaxUI: () => void openExternal("https://ui.syntaxdev.store"),
     onBack: () => island.setPanel("chat"),
-  });
+    onOverlay: (enabled) => {
+      settings = { ...settings, overlay: enabled };
+      void saveSettings(settings);
+      void (async () => {
+        if (enabled) {
+          overlay = await enableOverlay();
+          // Without the system grant the service cannot draw: ask for it now.
+          if (!overlay.granted) await openOverlayPermission();
+        } else {
+          overlay = await disableOverlay();
+        }
+        renderSettingsView();
+      })();
+    },
+    onOverlayPermission: () => void openOverlayPermission(),
+  }, overlay);
 }
+
+/** Android revokes overlay access from the system settings screen, not from us. */
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden || !isAndroid()) return;
+  void (async () => {
+    const before = overlay;
+    overlay = await overlayState();
+    if (overlay.granted && settings.overlay && !overlay.running) overlay = await enableOverlay();
+    if (before.granted !== overlay.granted && island.currentPanel === "settings") renderSettingsView();
+  })();
+});
 
 /* ── Screenshots → SyntaxUI ──────────────────────────────────────────────── */
 
@@ -479,11 +523,21 @@ islandEl.querySelector(".bar")?.addEventListener("click", (event) => {
 });
 
 cubeBtn.addEventListener("click", () => {
+  cube.poke();
   island.open("chat");
   setMood("happy");
   window.setTimeout(() => {
     if (!busy) setMood("idle");
   }, 1800);
+});
+
+// He is a pet: tapping the big Synt makes him hop.
+heroCubeCanvas.addEventListener("pointerdown", () => {
+  heroCube.poke();
+  setMood("happy");
+  window.setTimeout(() => {
+    if (!busy) setMood("idle");
+  }, 1600);
 });
 
 btnMic.addEventListener("click", () => void greetAndListen());
@@ -592,6 +646,11 @@ async function boot(): Promise<void> {
   }
 
   if (settings.wake) void ears.enableWake();
+
+  if (isAndroid()) {
+    overlay = await overlayState();
+    if (settings.overlay && overlay.granted) overlay = await enableOverlay();
+  }
 }
 
 void boot().catch((error) => {

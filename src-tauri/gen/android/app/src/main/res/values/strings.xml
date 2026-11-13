@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">"Synt"</string>
+    <string name="main_activity_title">"Synt"</string>
+    <string name="overlay_notification">"Synt reste à portée de main"</string>
+    <string name="overlay_channel">"Bulle flottante"</string>
+    <string name="overlay_open">"Ouvrir"</string>
+    <string name="overlay_hide">"Masquer"</string>
+</resources>

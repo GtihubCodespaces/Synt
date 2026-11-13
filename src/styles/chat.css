@@ -186,8 +186,9 @@
 /* ── Empty state ─────────────────────────────────────────────────────────── */
 
 .welcome {
-  margin: auto 0;
-  padding: 6px 4px 12px;
+  /* Under the hero, not floating in the middle of a half-empty pane. */
+  margin: 0 0 auto;
+  padding: 2px 4px 12px;
   display: flex;
   flex-direction: column;
   align-items: center;

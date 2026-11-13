@@ -4,6 +4,8 @@ use std::path::PathBuf;
 use base64::Engine;
 use tauri::{Manager, PhysicalPosition, PhysicalSize};
 
+mod overlay;
+
 /// Six small commands. Everything else — the island, the cube, the chat, the
 /// voice — lives in the web front end, so this file stays boring on purpose.
 fn data_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
@@ -154,13 +156,19 @@ fn open_external(target: String) -> Result<(), String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(overlay::plugin())
         .invoke_handler(tauri::generate_handler![
             read_store,
             write_store,
             set_island_size,
             read_image,
             stage_screenshots,
-            open_external
+            open_external,
+            overlay::overlay_state,
+            overlay::overlay_enable,
+            overlay::overlay_disable,
+            overlay::overlay_permission,
+            overlay::overlay_mood
         ])
         .setup(|app| {
             if let Some(window) = app.get_webview_window("main") {

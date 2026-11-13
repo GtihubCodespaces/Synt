@@ -1,8 +1,16 @@
 import { LANGS, t } from "../core/i18n";
 import { MODELS, type Settings, type VoiceMode } from "../core/store";
 
+export interface OverlayInfo {
+  supported: boolean;
+  granted: boolean;
+  running: boolean;
+}
+
 export interface SettingsActions {
   onPatch: (patch: Partial<Settings>) => void;
+  onOverlay: (enabled: boolean) => void;
+  onOverlayPermission: () => void;
   onKey: (key: string) => Promise<void>;
   onRemoveKey: () => Promise<void>;
   onTestKey: () => Promise<boolean>;
@@ -85,6 +93,7 @@ export function renderSettings(
   settings: Settings,
   hasKey: boolean,
   actions: SettingsActions,
+  overlay?: OverlayInfo,
 ): void {
   root.replaceChildren();
 
@@ -193,6 +202,26 @@ export function renderSettings(
   const back = h("button", { class: "ghost-btn", type: "button", text: "‹ Chat" });
   back.addEventListener("click", () => actions.onBack());
 
+  // Android only: the system-level floating island. Hidden elsewhere, because
+  // there is nothing honest to show on a desktop.
+  const overlayRows: Node[] = [];
+  if (overlay?.supported) {
+    overlayRows.push(
+      row(
+        t("overlayToggle"),
+        toggle(settings.overlay, (enabled) => actions.onOverlay(enabled)),
+        t("overlayHint"),
+      ),
+    );
+    if (overlay.granted) {
+      overlayRows.push(h("p", { class: "set-note", text: t("overlayGranted") }));
+    } else {
+      const allow = h("button", { class: "btn primary", type: "button", text: t("overlayPermission") });
+      allow.addEventListener("click", () => actions.onOverlayPermission());
+      overlayRows.push(h("div", { class: "set-actions" }, [allow]));
+    }
+  }
+
   root.append(
     h("div", { class: "set-head" }, [back, h("span", { class: "set-head-title", text: "Synt" })]),
     group(t("settings"), [
@@ -203,6 +232,7 @@ export function renderSettings(
     ]),
     group(t("model"), [row(t("model"), modelSelect)]),
     keyRow,
+    ...(overlayRows.length ? [group(t("overlay"), overlayRows)] : []),
     group(t("ttsServer"), [row(t("ttsServer"), serverInput, t("ttsServerHint"))]),
     group(t("about"), [
       h("div", { class: "set-actions" }, [reset, syntaxButton]),

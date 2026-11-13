@@ -8,6 +8,7 @@ export interface Settings {
   lang: string;
   voice: VoiceMode;
   wake: boolean;
+  overlay: boolean;
   model: string;
   apiKey: string;
   ttsServer: string;
@@ -23,6 +24,7 @@ export const DEFAULTS: Settings = {
   lang: detectLang(),
   voice: "local",
   wake: false,
+  overlay: false,
   model: MODELS.free,
   apiKey: "",
   ttsServer: import.meta.env.VITE_TTS_SERVER || "http://127.0.0.1:8765",

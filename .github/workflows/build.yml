@@ -121,8 +121,12 @@ jobs:
       - name: Draw the icons
         run: npm run icons
 
-      - name: Generate the Android project
-        run: npx tauri android init --ci
+      # src-tauri/gen/android is committed because it carries the floating
+      # island (Kotlin service + Tauri plugin). Only bootstrap if it is absent.
+      - name: Android project
+        run: |
+          set -euo pipefail
+          if [ ! -d src-tauri/gen/android ]; then npx tauri android init --ci; fi
 
       - name: Android launcher icons
         run: npx tauri icon src-tauri/icons/icon-1024.png

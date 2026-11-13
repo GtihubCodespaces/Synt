@@ -1,7 +1,8 @@
 node_modules/
 dist/
 src-tauri/target/
-src-tauri/gen/
+# The Android project is source: it carries the overlay service and plugin.
+src-tauri/gen/schemas/
 .env
 .env.*
 !.env.example

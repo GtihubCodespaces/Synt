@@ -1,10 +1,15 @@
 /**
- * Synt himself: a red cube with two white eyes, drawn in Canvas 2D.
+ * Synt himself: a solid red cube with two white tick eyes, drawn in Canvas 2D.
  *
- * No sprite sheets, no WebGL: three rounded faces in a cabinet projection, a
- * warm rim, a soft contact shadow, and eyes that blink, track the pointer and
- * change shape with his mood. It stays crisp from 28 px (the collapsed
- * island) to 160 px (settings).
+ * The eyes are the whole face — two short rounded ticks, angled like opening
+ * quotation marks, exactly the way Grok Bot shapes carry state. Nothing else:
+ * no pupils, no mouth. That leaves the eyes free to *become* the status:
+ * straight and tall while listening, spinning satellites while thinking,
+ * pulsing while speaking, smiling arcs when happy, flat dashes asleep.
+ *
+ * Motion does the rest of the acting: breathing, gaze drift, tilt, a springy
+ * squash when you poke him. It stays crisp from 28 px (the collapsed island)
+ * to 96 px (the welcome cube).
  */
 
 export type Mood = "idle" | "listening" | "thinking" | "speaking" | "happy" | "sleeping";
@@ -49,6 +54,31 @@ function gradient(
   return g;
 }
 
+/** One rounded tick: the only facial feature Synt has. */
+function tick(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  length: number,
+  thickness: number,
+  angle: number,
+  alpha = 1,
+): void {
+  const half = length / 2;
+  ctx.save();
+  ctx.globalAlpha *= alpha;
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+  ctx.lineCap = "round";
+  ctx.lineWidth = Math.max(0.9, thickness);
+  ctx.strokeStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.moveTo(0, -half);
+  ctx.lineTo(0, half);
+  ctx.stroke();
+  ctx.restore();
+}
+
 export class SyntCube {
   private readonly ctx: CanvasRenderingContext2D;
   private mood: Mood = "idle";
@@ -56,15 +86,18 @@ export class SyntCube {
   private moodAt = 0;
   private look = { x: 0, y: 0 };
   private target = { x: 0, y: 0 };
+  private drift = { x: 0, y: 0 };
+  private driftTarget = { x: 0, y: 0 };
+  private nextDrift = 0;
   private nextBlink = 0;
   private blinkStart = -1;
+  private pokeAt = -1;
   private raf = 0;
   private last = 0;
   private time = 0;
   private width = 32;
   private height = 32;
   private dpr = 1;
-  private shadowGradient: CanvasGradient | null = null;
   private hover = false;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
@@ -82,6 +115,7 @@ export class SyntCube {
     canvas.addEventListener("pointerenter", () => (this.hover = true));
     canvas.addEventListener("pointerleave", () => (this.hover = false));
     this.nextBlink = performance.now() + 2400;
+    this.nextDrift = performance.now() + 1400;
   }
 
   private onPointer = (event: PointerEvent): void => {
@@ -102,7 +136,6 @@ export class SyntCube {
     this.dpr = dpr;
     this.canvas.width = Math.round(this.width * dpr);
     this.canvas.height = Math.round(this.height * dpr);
-    this.shadowGradient = null;
   }
 
   /** Two canvases, one character: the header cube and the big welcome cube. */
@@ -118,6 +151,14 @@ export class SyntCube {
     this.mood = mood;
     this.moodAt = performance.now();
     if (mood === "happy") this.nextBlink = performance.now() + 4000;
+  }
+
+  /** A tap on the cube: he hops, squashes, and beams for a moment. */
+  poke(): void {
+    this.pokeAt = performance.now();
+    this.setMood("happy");
+    this.nextBlink = performance.now() + 3200;
+    this.driftTarget = { x: 0, y: 0 };
   }
 
   start(): void {
@@ -142,7 +183,7 @@ export class SyntCube {
     if (this.mood === "sleeping") return 0;
     if (now > this.nextBlink) {
       this.blinkStart = now;
-      this.nextBlink = now + 2600 + Math.random() * 3800;
+      this.nextBlink = now + 2400 + Math.random() * 3600;
     }
     if (this.blinkStart < 0) return 1;
     const k = (now - this.blinkStart) / 150;
@@ -163,68 +204,92 @@ export class SyntCube {
     this.look.x += (this.target.x - this.look.x) * ease;
     this.look.y += (this.target.y - this.look.y) * ease;
 
+    // Idle curiosity: every few seconds he glances somewhere else.
+    if (now > this.nextDrift) {
+      this.nextDrift = now + 2200 + Math.random() * 3600;
+      this.driftTarget = { x: (Math.random() - 0.5) * 1.1, y: (Math.random() - 0.5) * 0.7 };
+    }
+    this.drift.x += (this.driftTarget.x - this.drift.x) * (1 - Math.pow(0.02, dt));
+    this.drift.y += (this.driftTarget.y - this.drift.y) * (1 - Math.pow(0.02, dt));
+
     const w = this.width;
     const h = this.height;
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
 
-    const s = Math.min(w, h) * 0.6;
-    const dx = s * 0.3;
-    const dy = s * 0.27;
+    // Small canvases need a bigger share of the box or the ticks turn to dust.
+    const s = Math.min(w, h) * (Math.min(w, h) < 48 ? 0.7 : 0.62);
+    const dx = s * 0.26;
+    const dy = s * 0.23;
     const t = this.time;
     const moodAge = (now - this.moodAt) / 1000;
 
-    const bob = Math.sin(t * 1.45) * s * 0.016 + (this.mood === "speaking" ? Math.sin(t * 9) * s * 0.012 : 0);
-    const breathe = 1 + Math.sin(t * 1.45) * 0.008 + (this.mood === "listening" ? 0.02 : 0);
-    const tilt = this.look.x * 0.05;
+    // ── Acting ────────────────────────────────────────────────────────────
+    const bob = Math.sin(t * 1.35) * s * 0.015;
+    const breathe = 1 + Math.sin(t * 1.35) * 0.009;
+    const listenLift = this.mood === "listening" ? 0.025 : 0;
+    const thinkSway = this.mood === "thinking" ? Math.sin(t * 2.1) * s * 0.018 : 0;
 
-    // Cabinet projection: the depth vector goes up-and-right, so the visible
-    // faces are front, top and right — the classic cube silhouette.
+    // Poke: a damped hop with squash on take-off and landing.
+    const pokeT = this.pokeAt < 0 ? 9 : (now - this.pokeAt) / 1000;
+    const hop = pokeT < 1.5 ? -Math.abs(Math.sin(pokeT * Math.PI * 1.5)) * s * 0.3 * Math.exp(-pokeT * 2.6) : 0;
+    const squashWave = pokeT < 1.5 ? Math.sin(pokeT * Math.PI * 3) * Math.exp(-pokeT * 3.4) : 0;
+    const scaleX = breathe + squashWave * 0.07 + listenLift * 0.4;
+    const scaleY = breathe - squashWave * 0.08 + listenLift;
+
+    const tilt = this.look.x * 0.045 + Math.sin(t * 0.9) * 0.006;
+
+    // Cabinet projection: depth goes up-and-right, so the visible faces are
+    // front, top and right — the classic cube silhouette.
     const originX = w / 2 - (s + dx) / 2;
-    const originY = h / 2 - (s + dy) / 2 + bob - (this.mood === "thinking" ? Math.sin(t * 2.4) * s * 0.02 : 0);
+    const originY = h / 2 - (s + dy) / 2 + bob + hop + thinkSway;
 
-    ctx.save();
-    // Warm aura, brighter while Synt is doing something.
     const cx = originX + (s + dx) / 2;
     const cy = originY + (s + dy) / 2;
-    const auraAlpha = this.mood === "idle" ? 0.2 : this.mood === "sleeping" ? 0.08 : 0.32;
+
+    // ── Aura and shadow ───────────────────────────────────────────────────
+    ctx.save();
+    const auraAlpha =
+      this.mood === "idle" ? 0.18 : this.mood === "sleeping" ? 0.07 : this.mood === "listening" ? 0.34 : 0.28;
     const aura = ctx.createRadialGradient(cx, cy, s * 0.1, cx, cy, s * 0.98);
     aura.addColorStop(0, `rgba(255, 66, 56, ${auraAlpha})`);
-    aura.addColorStop(0.55, `rgba(255, 40, 40, ${auraAlpha * 0.4})`);
+    aura.addColorStop(0.55, `rgba(255, 40, 40, ${auraAlpha * 0.36})`);
     aura.addColorStop(1, "rgba(255, 40, 40, 0)");
     ctx.fillStyle = aura;
     ctx.fillRect(0, 0, w, h);
 
-    // Contact shadow.
+    // Contact shadow, spread and softened by the hop.
+    const lift = Math.max(0, -hop) / Math.max(1, s);
     ctx.save();
-    ctx.translate(cx, originY + s + dy + s * 0.085);
-    ctx.scale(1, 0.22);
-    const shadow = ctx.createRadialGradient(0, 0, 0, 0, 0, s * 0.52);
-    shadow.addColorStop(0, "rgba(0,0,0,0.55)");
-    shadow.addColorStop(0.7, "rgba(0,0,0,0.22)");
+    ctx.translate(cx, originY + s + dy + s * 0.08);
+    ctx.scale(1 + lift * 0.6, 0.22);
+    const shadow = ctx.createRadialGradient(0, 0, 0, 0, 0, s * 0.5);
+    shadow.addColorStop(0, `rgba(0,0,0,${0.5 - lift * 0.3})`);
+    shadow.addColorStop(0.7, `rgba(0,0,0,${0.2 - lift * 0.12})`);
     shadow.addColorStop(1, "rgba(0,0,0,0)");
     ctx.fillStyle = shadow;
     ctx.beginPath();
-    ctx.arc(0, 0, s * 0.52, 0, Math.PI * 2);
+    ctx.arc(0, 0, s * 0.5, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
 
-    // Listening rings.
+    // Listening rings: the only weather he makes.
     if (this.mood === "listening") {
       for (let i = 0; i < 2; i += 1) {
-        const k = ((t * 0.85 + i * 0.5) % 1 + 1) % 1;
+        const k = (((t * 0.85 + i * 0.5) % 1) + 1) % 1;
         ctx.beginPath();
         ctx.arc(cx, cy, s * (0.52 + k * 0.55), 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(255, 80, 70, ${0.28 * (1 - k)})`;
-        ctx.lineWidth = Math.max(1, s * 0.018);
+        ctx.strokeStyle = `rgba(255, 80, 70, ${0.26 * (1 - k)})`;
+        ctx.lineWidth = Math.max(1, s * 0.016);
         ctx.stroke();
       }
     }
 
-    ctx.translate(cx, cy + bob * 0.4);
-    ctx.scale(breathe, breathe);
+    // ── Body ──────────────────────────────────────────────────────────────
+    ctx.translate(cx, originY + s + dy);
+    ctx.scale(scaleX, scaleY);
     ctx.rotate(tilt);
-    ctx.translate(-cx, -(cy + bob * 0.4));
+    ctx.translate(-cx, -(originY + s + dy));
 
     const ox = originX;
     const oy = originY;
@@ -248,172 +313,193 @@ export class SyntCube {
       [ox, oy + s + dy],
     ];
 
-    // Top face.
-    roundPolygon(ctx, top, s * 0.085);
+    // One silhouette under the three faces: no seams or notches where the
+    // rounded corners meet at the back edge.
+    const silhouette: Pt[] = [
+      [ox, oy + dy],
+      [ox, oy + s + dy],
+      [ox + s, oy + s + dy],
+      [ox + s + dx, oy + s],
+      [ox + s + dx, oy],
+      [ox + dx, oy],
+    ];
+    roundPolygon(ctx, silhouette, s * 0.14);
+    ctx.fillStyle = "#8c0a10";
+    ctx.fill();
+
+    // Top face — lit.
+    roundPolygon(ctx, top, s * 0.1);
     ctx.fillStyle = gradient(ctx, ox, oy + dy, ox + s + dx, oy, [
-      [0, "#ff8a7b"],
-      [0.5, "#ff5b4b"],
-      [1, "#ff3a2f"],
+      [0, "#ff554b"],
+      [0.55, "#fa3f37"],
+      [1, "#f2332c"],
     ]);
     ctx.fill();
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.34)";
-    ctx.lineWidth = Math.max(0.6, s * 0.012);
-    ctx.stroke();
 
-    // Right face.
-    roundPolygon(ctx, right, s * 0.085);
+    // Right face — shadowed.
+    roundPolygon(ctx, right, s * 0.12);
     ctx.fillStyle = gradient(ctx, ox + s, oy + dy, ox + s + dx, oy + s, [
-      [0, "#b31216"],
-      [0.6, "#8f0b10"],
-      [1, "#640407"],
+      [0, "#c01a20"],
+      [0.55, "#a10e15"],
+      [1, "#73060a"],
     ]);
     ctx.fill();
 
-    // Front face.
-    roundPolygon(ctx, front, s * 0.13);
-    const body = gradient(ctx, ox, oy + dy, ox + s * 0.55, oy + s + dy, [
-      [0, "#fb3a31"],
-      [0.5, "#ea2129"],
-      [1, "#b8101a"],
+    // Front face — one saturated red, barely graded: a shape, not a render.
+    roundPolygon(ctx, front, s * 0.16);
+    ctx.fillStyle = gradient(ctx, ox, oy + dy, ox + s * 0.4, oy + s + dy, [
+      [0, "#fa3730"],
+      [0.52, "#ee232b"],
+      [1, "#cf141f"],
     ]);
-    ctx.fillStyle = body;
     ctx.fill();
 
-    // Glossy top of the front face + shaded bottom.
+    // A thin inner light along the top edge, and a cool sheen at the bottom.
     ctx.save();
-    roundPolygon(ctx, front, s * 0.13);
+    roundPolygon(ctx, front, s * 0.16);
     ctx.clip();
-    const gloss = ctx.createLinearGradient(ox, oy + dy, ox, oy + s * 0.55 + dy);
-    gloss.addColorStop(0, "rgba(255,255,255,0.20)");
-    gloss.addColorStop(0.5, "rgba(255,255,255,0.04)");
-    gloss.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = gloss;
-    ctx.fillRect(ox, oy, s, s + dy);
-    const shade = ctx.createLinearGradient(ox, oy + s * 0.55 + dy, ox, oy + s + dy);
-    shade.addColorStop(0, "rgba(0,0,0,0)");
-    shade.addColorStop(1, "rgba(60,0,0,0.35)");
-    ctx.fillStyle = shade;
+    const sheen = ctx.createLinearGradient(ox, oy + dy, ox, oy + s + dy);
+    sheen.addColorStop(0, "rgba(255,255,255,0.16)");
+    sheen.addColorStop(0.28, "rgba(255,255,255,0.02)");
+    sheen.addColorStop(0.82, "rgba(0,0,0,0)");
+    sheen.addColorStop(1, "rgba(60,0,0,0.3)");
+    ctx.fillStyle = sheen;
     ctx.fillRect(ox, oy, s, s + dy);
     ctx.restore();
 
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.14)";
-    ctx.lineWidth = Math.max(0.6, s * 0.01);
-    roundPolygon(ctx, front, s * 0.13);
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
+    ctx.lineWidth = Math.max(0.6, s * 0.008);
+    roundPolygon(ctx, front, s * 0.16);
     ctx.stroke();
 
     // Rim light down the right edge.
     ctx.beginPath();
-    ctx.moveTo(ox + s - s * 0.02, oy + dy + s * 0.12);
-    ctx.lineTo(ox + s - s * 0.02, oy + s + dy - s * 0.14);
-    ctx.strokeStyle = "rgba(255, 170, 160, 0.35)";
-    ctx.lineWidth = Math.max(0.7, s * 0.016);
+    ctx.moveTo(ox + s - s * 0.02, oy + dy + s * 0.14);
+    ctx.lineTo(ox + s - s * 0.02, oy + s + dy - s * 0.16);
+    ctx.strokeStyle = "rgba(255, 176, 166, 0.3)";
+    ctx.lineWidth = Math.max(0.7, s * 0.014);
     ctx.stroke();
 
-    this.drawFace(ox, oy, s, dy, now, moodAge);
+    this.drawEyes(ox, oy, s, dy, now, moodAge);
+    ctx.restore();
 
+    // Sparkles: poke, and the tail of a happy mood.
+    if (this.mood === "happy") {
+      const burst = pokeT < 1.2 ? 1 : Math.max(0, 1 - moodAge / 2.2);
+      if (burst > 0) this.drawSparkles(ox, oy, s, dx, dy, burst);
+    }
+  }
+
+  private drawSparkles(ox: number, oy: number, s: number, dx: number, dy: number, fade: number): void {
+    const ctx = this.ctx;
+    const t = this.time;
+    ctx.save();
+    ctx.globalAlpha = fade;
+    for (let i = 0; i < 3; i += 1) {
+      const phase = t * 1.6 + i * 2.1;
+      const r = s * (0.035 + 0.012 * Math.sin(phase * 2));
+      const sx = ox + s * (0.9 + 0.05 * Math.cos(phase)) + (i === 1 ? s * 0.12 : 0) - (i === 2 ? s * 0.15 : 0);
+      const sy = oy + dy + s * (0.08 + 0.3 * i * 0.5) + Math.sin(phase) * s * 0.03;
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.beginPath();
+      for (let k = 0; k < 4; k += 1) {
+        const a = (Math.PI / 2) * k;
+        ctx.moveTo(0, 0);
+        ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+      }
+      ctx.strokeStyle = "rgba(255,255,255,0.9)";
+      ctx.lineWidth = Math.max(0.8, s * 0.014);
+      ctx.lineCap = "round";
+      ctx.stroke();
+      ctx.restore();
+    }
     ctx.restore();
   }
 
-  private drawFace(ox: number, oy: number, s: number, dy: number, now: number, moodAge: number): void {
+  private drawEyes(ox: number, oy: number, s: number, dy: number, now: number, moodAge: number): void {
     const ctx = this.ctx;
-    const eyeY = oy + dy + s * 0.45;
-    const eyeX = [ox + s * 0.31, ox + s * 0.69];
-    const baseRX = s * 0.15;
-    const baseRY = s * 0.175;
+    const faceY = oy + dy + s * 0.47;
+    const spread = s * (this.mood === "listening" ? 0.215 : 0.2);
     const open = this.openAmount(now);
+    const t = this.time;
 
-    const listening = this.mood === "listening";
+    const watching = this.mood === "idle";
+    const driftX = watching ? this.drift.x * s * 0.035 : 0;
+    const driftY = watching ? this.drift.y * s * 0.028 : 0;
+    const pointerX = this.look.x * s * 0.03;
+    const pointerY = this.look.y * s * 0.024;
+    const faceX = ox + s / 2 + driftX + pointerX;
+    const faceYAll = faceY + driftY + pointerY;
+
+    const angleBase = 0.3; // radians — parallel ticks, like a quotation mark
+    const baseLen = s * 0.16;
+    const baseThick = s * 0.088;
+
     const happy = this.mood === "happy";
+    const sleeping = this.mood === "sleeping";
+    const listening = this.mood === "listening";
     const thinking = this.mood === "thinking";
     const speaking = this.mood === "speaking";
 
-    const rx = baseRX * (listening ? 1.08 : 1) * (happy ? 1.05 : 1);
-    const ryBase = baseRY * (listening ? 1.06 : 1) * (speaking ? 0.94 : 1);
-    const ry = ryBase * open;
-
-    // Pupil offset: the pointer, plus a small idle drift.
-    const driftX = Math.sin(this.time * 0.7) * s * 0.012;
-    const driftY = Math.cos(this.time * 0.55) * s * 0.01;
-    const orbitX = thinking ? Math.sin(this.time * 3.1) * s * 0.03 : 0;
-    const orbitY = thinking ? Math.cos(this.time * 2.4) * s * 0.022 - s * 0.02 : 0;
-    const lookX = this.look.x * s * 0.045 + driftX + orbitX;
-    const lookY = this.look.y * s * 0.038 + driftY + orbitY;
-
-    const glintR = s * 0.017;
-    const pupilR = s * (listening ? 0.058 : 0.05);
-
     for (let i = 0; i < 2; i += 1) {
-      const x = eyeX[i];
+      const side = i === 0 ? -1 : 1;
+      const x = faceX + side * spread;
+      let y = faceYAll;
+      let len = baseLen;
+      let thick = baseThick;
+      let angle = angleBase;
+      let alpha = 1;
 
       if (happy) {
-        // Closed, smiling eyes.
-        ctx.beginPath();
-        ctx.arc(x, eyeY + s * 0.02, rx * 0.92, Math.PI * 1.12, Math.PI * 1.88);
-        ctx.strokeStyle = "#ffffff";
-        ctx.lineWidth = s * 0.05;
-        ctx.lineCap = "round";
-        ctx.shadowColor = "rgba(255,255,255,0.75)";
-        ctx.shadowBlur = s * 0.12;
-        ctx.stroke();
-        ctx.shadowBlur = 0;
-        continue;
-      }
-
-      ctx.save();
-      ctx.shadowColor = "rgba(255, 245, 240, 0.6)";
-      ctx.shadowBlur = s * 0.1;
-
-      if (ry < s * 0.028) {
-        // Blink: a soft lash line instead of a flattened ellipse.
-        ctx.beginPath();
-        ctx.moveTo(x - rx * 0.92, eyeY);
-        ctx.quadraticCurveTo(x, eyeY + s * 0.028, x + rx * 0.92, eyeY);
-        ctx.strokeStyle = "#ffffff";
-        ctx.lineWidth = s * 0.042;
-        ctx.lineCap = "round";
-        ctx.stroke();
-      } else {
-        ctx.beginPath();
-        ctx.ellipse(x, eyeY, rx, Math.max(ry, s * 0.02), 0, 0, Math.PI * 2);
-        ctx.fillStyle = "#ffffff";
-        ctx.fill();
-      }
-      ctx.restore();
-
-      if (ry >= s * 0.06) {
-        ctx.beginPath();
-        ctx.ellipse(x + lookX, eyeY + lookY, pupilR, pupilR * 1.08, 0, 0, Math.PI * 2);
-        ctx.fillStyle = "#2a0508";
-        ctx.fill();
-
-        ctx.beginPath();
-        ctx.arc(x + lookX - pupilR * 0.42, eyeY + lookY - pupilR * 0.5, glintR, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(255,255,255,0.92)";
-        ctx.fill();
-      }
-    }
-
-    // A tiny sparkle when he is pleased to see you.
-    if (happy && moodAge > 0.1) {
-      const fade = Math.max(0, 1 - moodAge / 2.4);
-      if (fade > 0) {
-        const sx = ox + s * 0.92;
-        const sy = oy + dy * 0.5;
-        const r = s * 0.06 * (0.6 + 0.4 * Math.sin(this.time * 6));
+        // Smiling eyes: two upward arcs.
+        const rx = s * 0.088;
         ctx.save();
-        ctx.globalAlpha = fade;
-        ctx.translate(sx, sy);
+        ctx.globalAlpha *= Math.min(1, 0.4 + moodAge * 3);
         ctx.beginPath();
-        for (let k = 0; k < 4; k += 1) {
-          const a = (Math.PI / 2) * k;
-          ctx.moveTo(0, 0);
-          ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
-        }
-        ctx.strokeStyle = "rgba(255,255,255,0.9)";
-        ctx.lineWidth = Math.max(0.8, s * 0.018);
+        ctx.arc(x, y + s * 0.025, rx, Math.PI * 1.1, Math.PI * 1.9);
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = Math.max(1.2, s * 0.058);
         ctx.lineCap = "round";
         ctx.stroke();
         ctx.restore();
+        continue;
+      }
+
+      if (sleeping) {
+        len = s * 0.15;
+        thick = Math.max(1, s * 0.05);
+        angle = 0;
+        alpha = 0.5;
+      } else if (listening) {
+        // Straight, tall, breathing with the room.
+        angle = 0.02 + Math.sin(t * 2.1 + i * 0.35) * 0.03;
+        len = baseLen * (1.1 + Math.sin(t * 2.4 + i * 0.8) * 0.08);
+        y += Math.sin(t * 2.4 + i * 0.8) * s * 0.008;
+      } else if (speaking) {
+        // Talking: each tick pulses out of phase, like a tiny meter.
+        const pulse = 0.82 + Math.abs(Math.sin(t * 7.5 + i * 1.9)) * 0.4;
+        len = baseLen * pulse;
+        thick = baseThick * (0.92 + Math.abs(Math.sin(t * 7.5 + i * 1.9)) * 0.18);
+        angle = angleBase * 0.8;
+      } else if (thinking) {
+        // Processing: the ticks lean in and out while a satellite orbits each.
+        angle = angleBase + Math.sin(t * 1.7 + i * 1.4) * 0.22;
+        len = baseLen * 0.92;
+      }
+
+      len *= Math.max(0.22, open);
+      thick *= open < 0.4 ? 0.7 : 1;
+      tick(ctx, x, y, len, thick, angle, alpha);
+
+      if (thinking) {
+        const orbit = t * 2.6 + i * Math.PI;
+        const px = x + Math.cos(orbit) * s * 0.085;
+        const py = y + Math.sin(orbit) * s * 0.055;
+        ctx.beginPath();
+        ctx.arc(px, py, Math.max(0.9, s * 0.017), 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(255,255,255,0.55)";
+        ctx.fill();
       }
     }
   }

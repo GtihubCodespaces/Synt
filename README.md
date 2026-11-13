@@ -33,9 +33,11 @@ your own machine.
 - **The island** — one element that morphs between four shapes: a 188 px pill,
   a hover peek, a 468 px panel and a phone-width panel. Spring transitions, a
   red aura that warms up with Synt's mood, glass blur, a drop overlay.
-- **Synt** — canvas-drawn cube: three rounded faces, a rim light, a contact
-  shadow, and two white eyes that blink, follow your pointer, narrow when he
-  listens, squint when he talks and turn into smiles when he is pleased.
+- **Synt** — a canvas-drawn red cube with two white tick eyes angled like
+  quotation marks. That is the Grok Bot trick: the eyes *are* the status. They
+  straighten and breathe when he listens, orbit when he thinks, pulse when he
+  speaks, turn into smiles when you poke him and flatten when he sleeps. He
+  breathes, glances around, hops when tapped and squashes on landing.
 - **"Hey Synt"** → *"Hi, {name}, how can I help you?"* spoken aloud, then he
   records your question and answers it.
 - **16 languages**, RTL included. The interface, the greeting and the replies
@@ -157,10 +159,13 @@ it elsewhere; KDE Plasma, COSMIC, Hyprland and Sway honour it.
 
 ```bash
 rustup target add aarch64-linux-android armv7-linux-androideabi
-npm run tauri android init     # needs the Android SDK + NDK and ANDROID_HOME
 npm run tauri android dev
 npm run tauri android build --apk
 ```
+
+`src-tauri/gen/android` is committed: it carries the floating-island service and
+its Tauri plugin. You only need `npm run tauri android init` after changing the
+bundle identifier.
 
 CI builds a **debug-signed arm64 APK** on every push (the `Android (arm64 APK)`
 job): JDK 17, the Android SDK, NDK r27c, the `aarch64-linux-android` target,
@@ -169,10 +174,20 @@ APK is the `synt-android` artifact on the run page and installs with
 `adb install`. A store-ready release APK only needs your own keystore in
 `gen/android/keystore.properties`; CI does not hold signing keys.
 
-**Known limit, stated plainly:** the island is drawn by the Synt activity, so on
-Android it lives inside the app's window. A true system-wide overlay needs the
-`SYSTEM_ALERT_WINDOW` permission and a foreground service, which v0.1 does not
-ship. The layout, safe-area handling and touch targets are already mobile-sized.
+**The floating island.** Synt can stay on screen after you leave the app: a
+small pill at the top of the screen, over whatever you are doing. Settings →
+**Floating island** turns it on; Android then asks for *display over other apps*,
+which opens the system permission screen. A quiet foreground notification keeps
+him alive and offers **Open** / **Hide**.
+
+Under the hood: a Kotlin foreground service (`SyntOverlayService`) draws one
+`TYPE_APPLICATION_OVERLAY` window with `SyntPetView`, the same cube and tick eyes
+drawn natively, at 60 fps and with no WebView. The window is removed while Synt
+is in front, returns the moment the activity pauses, can be dragged anywhere and
+springs back to the top centre when released. Tapping it opens the island.
+
+If the permission is revoked from system settings, the settings card says so and
+offers the system screen again instead of pretending the switch worked.
 
 ### The optional voice server
 
@@ -206,6 +221,8 @@ src/
   ui/shelf.ts            dropped screenshots
   styles/                tokens, island, chat, settings
 src-tauri/               Rust shell: window, local store, staging
+  src/overlay.rs         Android overlay bridge (foreground service)
+  gen/android/           committed Gradle project + Kotlin overlay
 scripts/gen-icons.mjs    draws the app icon (no binary assets in git)
 sidecar/                 local XTTS + wake-word server
 ```
@@ -216,13 +233,14 @@ apps underneath.
 
 ## What is not done
 
-- The Rust shell in `src-tauri/` was written but **not compiled in the
-  environment where this was built** (no Rust toolchain there). Run
-  `npm run tauri dev` on your machine; the front end is verified, the shell is
-  not.
+- The Rust shell and the Android overlay **compile in CI** (Linux, Windows,
+  Android), but nothing has been run on a real desktop or phone here: only the
+  web front end has been exercised in a browser.
 - Global keyboard shortcuts (a Tauri plugin) are not wired; the island listens
   to keys while focused, `Esc` folds it and `Ctrl/⌘ K` starts a new chat.
-- The Android overlay permission, as above.
+- The floating island has no automated test; battery savers and some ROMs kill
+  foreground services, and the overlay settings screen is hidden by a few of
+  them.
 - The voice server needs real hardware to tune; it is syntax-checked only.
 
 ## Credits
