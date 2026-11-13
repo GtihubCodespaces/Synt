@@ -3,6 +3,8 @@
 **A red cube with white eyes, living in a Dynamic Island at the top of your
 screen. Windows, Linux and Android — no Apple.**
 
+[![build](https://github.com/GtihubCodespaces/Synt/actions/workflows/build.yml/badge.svg)](https://github.com/GtihubCodespaces/Synt/actions/workflows/build.yml)
+
 Synt is a fork of [coucou](https://github.com/Louis-CFM/coucou)'s Windows/Linux
 island, rebuilt for **[SyntaxUI](https://ui.syntaxdev.store)** and stripped of
 the Mac. It talks, listens, greets you by name, and turns dropped screenshots

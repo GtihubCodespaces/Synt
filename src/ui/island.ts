@@ -92,9 +92,12 @@ export class Island {
   private syncSize(): void {
     const mobile = window.matchMedia("(max-width: 540px)").matches;
     let [width, height] = SIZES[this.state];
-    if (this.state === "open" && mobile) {
-      width = Math.max(300, Math.min(468, window.innerWidth - 12));
-      height = Math.min(Math.round(window.innerHeight * 0.86), 620);
+    if (this.state === "open") {
+      height = Math.min(height, window.innerHeight - 16);
+      if (mobile) {
+        width = Math.max(300, Math.min(468, window.innerWidth - 12));
+        height = Math.min(Math.round(window.innerHeight * 0.86), 620);
+      }
     }
     if (this.frame) cancelAnimationFrame(this.frame);
     this.frame = requestAnimationFrame(() => {

@@ -313,6 +313,7 @@ function renderSettingsView(): void {
       island.setPanel("chat");
     },
     onSyntaxUI: () => void openExternal("https://ui.syntaxdev.store"),
+    onBack: () => island.setPanel("chat"),
   });
 }
 

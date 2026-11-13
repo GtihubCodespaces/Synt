@@ -8,6 +8,7 @@ export interface SettingsActions {
   onTestKey: () => Promise<boolean>;
   onReset: () => void;
   onSyntaxUI: () => void;
+  onBack: () => void;
 }
 
 function h<K extends keyof HTMLElementTagNameMap>(
@@ -189,7 +190,11 @@ export function renderSettings(
   const syntaxButton = h("button", { class: "btn", type: "button", text: "SyntaxUI ↗" });
   syntaxButton.addEventListener("click", () => actions.onSyntaxUI());
 
+  const back = h("button", { class: "ghost-btn", type: "button", text: "‹ Chat" });
+  back.addEventListener("click", () => actions.onBack());
+
   root.append(
+    h("div", { class: "set-head" }, [back, h("span", { class: "set-head-title", text: "Synt" })]),
     group(t("settings"), [
       row(t("yourName"), nameInput, t("yourNameHint")),
       row(t("language"), langSelect),

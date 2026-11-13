@@ -63,7 +63,7 @@
 
 #island[data-state="open"] {
   --w: 468px;
-  --h: 588px;
+  --h: min(588px, calc(100vh - 16px));
   --r: 28px;
 }
 
