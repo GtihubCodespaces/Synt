@@ -1,0 +1,137 @@
+:root {
+  color-scheme: dark;
+
+  --red-300: #ff9188;
+  --red-400: #ff6a5f;
+  --red-500: #ff3b30;
+  --red-600: #f4272c;
+  --red-700: #d31a20;
+  --red-800: #a5100f;
+  --red-900: #6b060a;
+
+  --ink-900: #08080a;
+  --ink-850: #0b0b0e;
+  --ink-800: #101013;
+
+  --text-100: #f7f8fa;
+  --text-300: rgba(247, 248, 250, 0.78);
+  --text-500: rgba(247, 248, 250, 0.52);
+  --text-700: rgba(247, 248, 250, 0.32);
+
+  --stroke: rgba(255, 255, 255, 0.08);
+  --stroke-2: rgba(255, 255, 255, 0.14);
+  --fill: rgba(255, 255, 255, 0.055);
+  --fill-2: rgba(255, 255, 255, 0.09);
+
+  --font: "Segoe UI Variable Text", "Segoe UI", Inter, Roboto, "Noto Sans",
+    "Noto Sans Arabic", "Noto Sans JP", "Noto Sans KR", "Noto Sans SC",
+    "Noto Sans Thai", "Noto Sans Bengali", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --ease-spring: cubic-bezier(0.22, 1.24, 0.36, 1);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur: 520ms;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  color: var(--text-100);
+  background: transparent;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  user-select: none;
+  cursor: default;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+::selection {
+  background: rgba(255, 59, 48, 0.35);
+}
+
+/* ── Browser shell ─────────────────────────────────────────────────────────
+   The real app is a transparent, click-through window: only the island is
+   visible. In a normal browser tab we lay a desk under it so it reads right. */
+html.shell-browser body {
+  background:
+    radial-gradient(1100px 520px at 50% -8%, rgba(255, 59, 48, 0.18), transparent 62%),
+    radial-gradient(900px 520px at 8% 104%, rgba(86, 96, 255, 0.1), transparent 60%),
+    radial-gradient(760px 420px at 92% 96%, rgba(255, 138, 76, 0.08), transparent 60%),
+    #060608;
+}
+
+html.shell-browser body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(circle at 50% 34%, #000 0%, transparent 72%);
+  pointer-events: none;
+}
+
+.browser-hint {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--text-700);
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--stroke);
+  background: rgba(10, 10, 12, 0.6);
+  backdrop-filter: blur(12px);
+  opacity: 0;
+  animation: hint-in 600ms var(--ease-out) 900ms forwards;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+@keyframes hint-in {
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Keyboard focus: visible, accent-coloured, never on a mouse click. */
+:where(button, input, textarea, select, a):focus-visible {
+  outline: 2px solid rgba(255, 59, 48, 0.6);
+  outline-offset: 2px;
+}

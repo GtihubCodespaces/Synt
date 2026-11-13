@@ -1,0 +1,17 @@
+node_modules/
+dist/
+src-tauri/target/
+src-tauri/gen/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+__pycache__/
+*.pyc
+.venv/
+sidecar/voices/*.wav
+sidecar/voices/*.mp3
+
+# local preview captures
+artifacts/

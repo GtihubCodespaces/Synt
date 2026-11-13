@@ -1,0 +1,23 @@
+{
+  "name": "synt",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Synt — a red cube with white eyes living in a Dynamic Island on Windows, Linux and Android. A coucou fork for SyntaxUI.",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --port 3000 --host",
+    "tauri": "tauri",
+    "icons": "node scripts/gen-icons.mjs"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.12.4"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.12.4",
+    "typescript": "^5.9.2",
+    "vite": "^8.3.8"
+  }
+}

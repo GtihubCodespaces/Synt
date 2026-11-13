@@ -1,0 +1,13 @@
+# Synt voice server — install only what you want.
+#
+# One voice in every language (the real deal):
+coqui-tts>=0.25          # XTTS-v2, offline, 17 languages, one speaker
+# numpy>=1.26            # pulled in by coqui-tts
+#
+# "Hey Synt" on Windows/Linux webviews (no built-in recogniser there):
+sounddevice>=0.4.6
+faster-whisper>=1.0
+#
+# Lighter alternatives, used automatically when present:
+#   piper  + SYNT_PIPER_MODEL=/path/to/voice.onnx
+#   espeak-ng (system package)

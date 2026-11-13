@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <title>Synt</title>
+  </head>
+  <body>
+    <div id="stage">
+      <div
+        id="island"
+        data-state="collapsed"
+        data-panel="chat"
+        data-mood="idle"
+        role="application"
+        aria-label="Synt"
+      >
+        <div class="island-aura" aria-hidden="true"></div>
+
+        <div class="bar">
+          <button id="cube-btn" class="cube-btn" type="button" aria-label="Synt">
+            <canvas id="cube" width="96" height="96"></canvas>
+          </button>
+
+          <div class="bar-titles">
+            <span class="bar-title">Synt</span>
+            <span class="bar-sub" id="bar-sub">Hey Synt</span>
+          </div>
+
+          <div class="bar-actions">
+            <span class="wave" id="wave" aria-hidden="true">
+              <i></i><i></i><i></i><i></i><i></i>
+            </span>
+            <button id="btn-mic" class="icon-btn" type="button" title="Listen" aria-label="Listen"></button>
+            <button id="btn-attach" class="icon-btn" type="button" title="Screenshots" aria-label="Screenshots"></button>
+            <button id="btn-settings" class="icon-btn" type="button" title="Settings" aria-label="Settings"></button>
+            <button id="btn-close" class="icon-btn" type="button" title="Close" aria-label="Close"></button>
+          </div>
+        </div>
+
+        <div class="body">
+          <section class="panel panel-chat" id="panel-chat">
+            <div class="chat-hero" id="chat-hero" aria-hidden="true">
+              <canvas id="cube-hero" width="192" height="192"></canvas>
+            </div>
+
+            <div class="messages" id="messages" role="log" aria-live="polite"></div>
+
+            <div class="shelf" id="shelf" hidden>
+              <div class="shelf-head">
+                <span class="shelf-title" id="shelf-title">For SyntaxUI</span>
+                <div class="shelf-actions">
+                  <button class="ghost-btn" id="shelf-brief" type="button">Brief</button>
+                  <button class="ghost-btn" id="shelf-open" type="button">SyntaxUI</button>
+                  <button class="ghost-btn" id="shelf-clear" type="button" aria-label="Clear">Clear</button>
+                </div>
+              </div>
+              <div class="shelf-strip" id="shelf-strip"></div>
+            </div>
+
+            <form class="composer" id="composer" autocomplete="off">
+              <textarea
+                id="input"
+                rows="1"
+                placeholder="Ask Synt anything…"
+                aria-label="Message Synt"
+              ></textarea>
+              <button class="icon-btn attach-inline" id="btn-attach-2" type="button" title="Attach a screenshot" aria-label="Attach a screenshot"></button>
+              <button class="send-btn" id="send" type="submit" aria-label="Send"></button>
+            </form>
+          </section>
+
+          <section class="panel panel-settings" id="panel-settings" hidden></section>
+        </div>
+
+        <div class="dropzone" id="dropzone" aria-hidden="true">
+          <div class="dropzone-inner">
+            <span class="dropzone-icon" id="dropzone-icon"></span>
+            <span class="dropzone-text" id="dropzone-text">Drop to send to SyntaxUI</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="browser-hint" id="browser-hint" hidden></div>
+    </div>
+
+    <input id="file-picker" type="file" accept="image/*" multiple hidden />
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

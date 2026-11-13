@@ -1,0 +1,41 @@
+/* The big Synt in an empty chat. The bar keeps the small one. */
+
+.chat-hero {
+  flex: 0 0 auto;
+  height: 116px;
+  display: grid;
+  place-items: center;
+  padding: 10px 0 0;
+  animation: hero-in 520ms var(--ease-spring) both;
+}
+
+.chat-hero[hidden] {
+  display: none;
+}
+
+#cube-hero {
+  width: 96px;
+  height: 96px;
+  display: block;
+}
+
+@keyframes hero-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (max-height: 620px) {
+  .chat-hero {
+    height: 88px;
+  }
+  #cube-hero {
+    width: 72px;
+    height: 72px;
+  }
+}
