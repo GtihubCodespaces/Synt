@@ -207,6 +207,8 @@ const outputs = [
   [128, "128x128.png"],
   [256, "128x128@2x.png"],
   [512, "icon.png"],
+  // Master for `tauri icon`, which derives the Android mipmaps from it.
+  [1024, "icon-1024.png"],
 ];
 
 for (const [size, name] of outputs) {

@@ -75,7 +75,8 @@ button {
 /* ── Browser shell ─────────────────────────────────────────────────────────
    The real app is a transparent, click-through window: only the island is
    visible. In a normal browser tab we lay a desk under it so it reads right. */
-html.shell-browser body {
+html.shell-browser body,
+html.shell-mobile body {
   background:
     radial-gradient(1100px 520px at 50% -8%, rgba(255, 59, 48, 0.18), transparent 62%),
     radial-gradient(900px 520px at 8% 104%, rgba(86, 96, 255, 0.1), transparent 60%),
@@ -83,7 +84,8 @@ html.shell-browser body {
     #060608;
 }
 
-html.shell-browser body::before {
+html.shell-browser body::before,
+html.shell-mobile body::before {
   content: "";
   position: fixed;
   inset: 0;

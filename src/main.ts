@@ -561,7 +561,8 @@ voice.prime();
 /* ── Boot ────────────────────────────────────────────────────────────────── */
 
 async function boot(): Promise<void> {
-  document.documentElement.classList.add(isTauri() ? "shell-app" : "shell-browser");
+  const onAndroid = isTauri() && /Android/i.test(navigator.userAgent);
+  document.documentElement.classList.add(onAndroid ? "shell-mobile" : isTauri() ? "shell-app" : "shell-browser");
 
   settings = await loadSettings();
   apiKey = await loadKey();

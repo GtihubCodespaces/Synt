@@ -159,8 +159,15 @@ it elsewhere; KDE Plasma, COSMIC, Hyprland and Sway honour it.
 rustup target add aarch64-linux-android armv7-linux-androideabi
 npm run tauri android init     # needs the Android SDK + NDK and ANDROID_HOME
 npm run tauri android dev
-npm run tauri android build
+npm run tauri android build --apk
 ```
+
+CI builds a **debug-signed arm64 APK** on every push (the `Android (arm64 APK)`
+job): JDK 17, the Android SDK, NDK r27c, the `aarch64-linux-android` target,
+`android init`, then `tauri android build --apk --debug --target aarch64`. The
+APK is the `synt-android` artifact on the run page and installs with
+`adb install`. A store-ready release APK only needs your own keystore in
+`gen/android/keystore.properties`; CI does not hold signing keys.
 
 **Known limit, stated plainly:** the island is drawn by the Synt activity, so on
 Android it lives inside the app's window. A true system-wide overlay needs the

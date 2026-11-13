@@ -47,8 +47,18 @@ fn write_store(app: tauri::AppHandle, name: String, data: String) -> Result<bool
 }
 
 /// Keep the native window exactly the size of the island, pinned top-centre.
+/// Desktop only: on Android the activity owns the window.
 #[tauri::command]
 fn set_island_size(window: tauri::Window, width: f64, height: f64) -> Result<(), String> {
+    #[cfg(not(desktop))]
+    {
+        let _ = (window, width, height);
+        return Ok(());
+    }
+
+    #[cfg(desktop)]
+    #[allow(unreachable_code)]
+    {
     let scale = window.scale_factor().map_err(|err| err.to_string())?;
     let w = (width * scale).round().clamp(120.0, 4000.0) as u32;
     let h = (height * scale).round().clamp(40.0, 4000.0) as u32;
@@ -65,6 +75,7 @@ fn set_island_size(window: tauri::Window, width: f64, height: f64) -> Result<(),
             .map_err(|err| err.to_string())?;
     }
     Ok(())
+    }
 }
 
 #[tauri::command]

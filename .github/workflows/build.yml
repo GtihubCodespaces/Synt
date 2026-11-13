@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  desktop:
     name: ${{ matrix.name }}
     strategy:
       fail-fast: false
@@ -66,5 +66,69 @@ jobs:
         with:
           name: synt-${{ matrix.platform }}
           path: src-tauri/target/release/bundle/**
+          if-no-files-found: error
+          retention-days: 14
+
+  android:
+    name: Android (arm64 APK)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Android NDK
+        id: ndk
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r27c
+          add-to-path: true
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: android
+
+      - name: Install front end
+        run: npm ci
+
+      - name: Draw the icons
+        run: npm run icons
+
+      - name: Generate the Android project
+        run: npx tauri android init --ci
+        env:
+          NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
+
+      - name: Android launcher icons
+        run: npx tauri icon src-tauri/icons/icon-1024.png
+
+      - name: Build the APK
+        run: npx tauri android build --apk --debug --target aarch64
+        env:
+          NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
+          ANDROID_NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
+
+      - name: Upload the APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: synt-android
+          path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
           if-no-files-found: error
           retention-days: 14
