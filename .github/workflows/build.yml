@@ -87,14 +87,24 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - uses: android-actions/setup-android@v3
-
-      - name: Android NDK
-        id: ndk
-        uses: nttld/setup-ndk@v1
-        with:
-          ndk-version: r27c
-          add-to-path: true
+      # The ubuntu image already ships the Android SDK and several NDKs, so
+      # there is no setup action to fail before the build starts.
+      - name: Android SDK and NDK
+        run: |
+          set -euo pipefail
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          NDK="$(ls -d "$SDK"/ndk/* 2>/dev/null | sort -V | tail -1 || true)"
+          if [ -z "$NDK" ]; then
+            yes | "$SDK/cmdline-tools/latest/bin/sdkmanager" --install "ndk;27.0.12077973" > /dev/null
+            NDK="$SDK/ndk/27.0.12077973"
+          fi
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
+          echo "NDK_HOME=$NDK" >> "$GITHUB_ENV"
+          echo "ANDROID_NDK_HOME=$NDK" >> "$GITHUB_ENV"
+          echo "SDK: $SDK"
+          echo "NDK: $NDK"
+          ls "$SDK/ndk" || true
 
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -113,17 +123,12 @@ jobs:
 
       - name: Generate the Android project
         run: npx tauri android init --ci
-        env:
-          NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
 
       - name: Android launcher icons
         run: npx tauri icon src-tauri/icons/icon-1024.png
 
       - name: Build the APK
         run: npx tauri android build --apk --debug --target aarch64
-        env:
-          NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
-          ANDROID_NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
 
       - name: Upload the APK
         uses: actions/upload-artifact@v4
